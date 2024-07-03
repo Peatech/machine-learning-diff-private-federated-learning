@@ -39,7 +39,7 @@ class PrivAgent:
         return self.bound
 
 def Assignements(dic):
-    return [tf.assign(var, dic[Vname_to_Pname(var)]) for var in tf.trainable_variables()]
+    return [tf.compat.v1.assign(var, dic[Vname_to_Pname(var)]) for var in tf.compat.v1.trainable_variables()]
 
 
 def Vname_to_Pname(var):
@@ -57,8 +57,8 @@ def Vname_to_Vname(var):
 class WeightsAccountant:
     def __init__(self,sess,model,sigma, real_round):
 
-        self.Weights = [np.expand_dims(sess.run(v), -1) for v in tf.trainable_variables()]
-        self.keys = [Vname_to_FeedPname(v) for v in tf.trainable_variables()]
+        self.Weights = [np.expand_dims(sess.run(v), -1) for v in tf.compat.v1.trainable_variables()]
+        self.keys = [Vname_to_FeedPname(v) for v in tf.compat.v1.trainable_variables()]
 
         # The trainable parameters are [q x p] matrices, we expand them to [q x p x 1] in order to later stack them
         # along the third dimension.
@@ -82,7 +82,7 @@ class WeightsAccountant:
 
     def allocate(self, sess):
 
-        self.Weights = [np.concatenate((self.Weights[i], np.expand_dims(sess.run(tf.trainable_variables()[i]), -1)), -1)
+        self.Weights = [np.concatenate((self.Weights[i], np.expand_dims(sess.run(tf.compat.v1.trainable_variables()[i]), -1)), -1)
                         for i in range(self.num_weights)]
 
         # The trainable parameters are [q x p] matrices, we expand them to [q x p x 1] in order to stack them
@@ -306,12 +306,12 @@ def save_progress(save_dir, model, Delta_accountant, Accuracy_accountant, Privac
 
 
 def global_step_creator():
-    global_step = [v for v in tf.global_variables() if v.name == "global_step:0"][0]
-    global_step_placeholder = tf.placeholder(dtype=tf.float32, shape=(), name='global_step_placeholder')
+    global_step = [v for v in tf.compat.v1.global_variables() if v.name == "global_step:0"][0]
+    global_step_placeholder = tf.compat.v1.placeholder(dtype=tf.float32, shape=(), name='global_step_placeholder')
     one = tf.constant(1, dtype=tf.float32, name='one')
     new_global_step = tf.add(global_step, one)
-    increase_global_step = tf.assign(global_step, new_global_step)
-    set_global_step = tf.assign(global_step, global_step_placeholder)
+    increase_global_step = tf.compat.v1.assign(global_step, new_global_step)
+    set_global_step = tf.compat.v1.assign(global_step, global_step_placeholder)
     return increase_global_step, set_global_step
 
 
@@ -384,7 +384,4 @@ class Flag:
         self.e = e
         self.record_privacy = record_privacy
         self.save_dir = save_dir
-        self.log_dir = log_dir
-        self.max_comm_rounds = max_comm_rounds
-        self.gm = gm
-        self.PrivAgentName = PrivAgent.Name
+        self.log_dir = log
