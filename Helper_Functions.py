@@ -384,4 +384,7 @@ class Flag:
         self.e = e
         self.record_privacy = record_privacy
         self.save_dir = save_dir
-        self.log_dir = log
+        self.log_dir = log_dir
+        self.max_comm_rounds = max_comm_rounds
+        self.gm = gm
+        self.PrivAgentName = PrivAgent.Name
