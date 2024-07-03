@@ -26,230 +26,80 @@ apply gradients.
 This file is used by the various "fully_connected_*.py" files and not meant to
 be run.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from scipy.stats import truncnorm
-
-import numpy as np
-import math
 
 import tensorflow as tf
+import numpy as np
 
-# The MNIST dataset has 10 classes, representing the digits 0 through 9.
 NUM_CLASSES = 10
-
-# The MNIST images are always 28x28 pixels.
 IMAGE_SIZE = 28
 IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE
 
-def init_weights(size):
-    # we truncate the normal distribution at two times the standard deviation (which is 2)
-    # to account for a smaller variance (but the same mean), we multiply the resulting matrix with he desired std
-    return np.float32(truncnorm.rvs(-2, 2, size=size)*1.0/math.sqrt(float(size[0])))
+def init_weights(shape, stddev=0.1):
+    """ Initialize weights with a truncated normal distribution """
+    initializer = tf.initializers.TruncatedNormal(stddev=stddev)
+    return tf.Variable(initializer(shape=shape), dtype=tf.float32)
 
+def mnist_fully_connected_model(hidden1, hidden2):
+    """Builds a fully connected model with two hidden layers using tf.keras"""
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(hidden1, activation='relu', input_shape=(IMAGE_PIXELS,), 
+                              kernel_initializer=tf.initializers.TruncatedNormal(stddev=1.0 / np.sqrt(IMAGE_PIXELS))),
+        tf.keras.layers.Dense(hidden2, activation='relu', 
+                              kernel_initializer=tf.initializers.TruncatedNormal(stddev=1.0 / np.sqrt(hidden1))),
+        tf.keras.layers.Dense(NUM_CLASSES, 
+                              kernel_initializer=tf.initializers.TruncatedNormal(stddev=1.0 / np.sqrt(hidden2)))
+    ])
+    return model
 
-def inference(images, Hidden1, Hidden2):
-
-  with tf.name_scope('hidden1'):
-
-    weights = tf.Variable(init_weights([IMAGE_PIXELS, Hidden1]), name='weights', dtype=tf.float32)
-    biases = tf.Variable(np.zeros([Hidden1]),name='biases',dtype=tf.float32)
-    hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
-
-  with tf.name_scope('hidden2'):
-
-    weights = tf.Variable(init_weights([Hidden1, Hidden2]),name='weights',dtype=tf.float32)
-    biases = tf.Variable(np.zeros([Hidden2]),name='biases',dtype=tf.float32)
-    hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
-
-  with tf.name_scope('out'):
-
-    weights = tf.Variable(init_weights([Hidden2, NUM_CLASSES]), name='weights',dtype=tf.float32)
-    biases = tf.Variable(np.zeros([NUM_CLASSES]), name='biases',dtype=tf.float32)
-    logits = tf.matmul(hidden2, weights) + biases
-
-  return logits
-
-def inference_no_bias(images, Hidden1, Hidden2):
-
-  with tf.name_scope('hidden1'):
-
-    weights = tf.Variable(init_weights([IMAGE_PIXELS, Hidden1]), name='weights', dtype=tf.float32)
-    hidden1 = tf.nn.relu(tf.matmul(images, weights))
-
-  with tf.name_scope('hidden2'):
-
-    weights = tf.Variable(init_weights([Hidden1, Hidden2]),name='weights',dtype=tf.float32)
-    hidden2 = tf.nn.relu(tf.matmul(hidden1, weights))
-
-  with tf.name_scope('out'):
-
-    weights = tf.Variable(init_weights([Hidden2, NUM_CLASSES]), name='weights',dtype=tf.float32)
-    logits = tf.matmul(hidden2, weights)
-
-  return logits
-
-
-def loss(logits, labels):
-  """Calculates the loss from the logits and the labels.
-
-  Args:
-    logits: Logits tensor, float - [batch_size, NUM_CLASSES].
-    labels: Labels tensor, int32 - [batch_size].
-  Returns:
-    loss: Loss tensor of type float.
-  """
-  labels = tf.to_int64(labels)
-  cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-      labels=labels, logits=logits, name='xentropy')
-  return tf.reduce_mean(cross_entropy, name='xentropy_mean')
-
-
-def training(loss, learning_rate):
-  """Sets up the training Ops.
-
-  Creates a summarizer to track the loss over time in TensorBoard.
-
-  Creates an optimizer and applies the gradients to all trainable variables.
-
-  The Op returned by this function is what must be passed to the
-  `sess.run()` call to cause the model to train.
-
-  Args:
-    loss: Loss tensor, from loss().
-    learning_rate: The learning rate to use for gradient descent.
-
-  Returns:
-    train_op: The Op for training.
-  """
-  # Add a scalar summary for the snapshot loss.
-  tf.summary.scalar('loss', loss)
-  # Create the gradient descent optimizer with the given learning rate.
-  optimizer = tf.train.GradientDescentOptimizer(learning_rate)
-  # Create a variable to track the global step.
-  global_step = tf.Variable(0, name='global_step', trainable=False)
-  # Use the optimizer to apply the gradients that minimize the loss
-  # (and also increment the global step counter) as a single training step.
-  train_op = optimizer.minimize(loss, global_step=global_step)
-  return train_op
-
-def evaluation(logits, labels):
-  """Evaluate the quality of the logits at predicting the label.
-
-  Args:
-    logits: Logits tensor, float - [batch_size, NUM_CLASSES].
-    labels: Labels tensor, int32 - [batch_size], with values in the
-      range [0, NUM_CLASSES).
-
-  Returns:
-    A scalar int32 tensor with the number of examples (out of batch_size)
-    that were predicted correctly.
-  """
-  # For a classifier model, we can use the in_top_k Op.
-  # It returns a bool tensor with shape [batch_size] that is true for
-  # the examples where the label is in the top k (here k=1)
-  # of all logits for that example.
-  correct = tf.nn.in_top_k(logits, labels, 1)
-  # Return the number of true entries.
-  return tf.reduce_sum(tf.cast(correct, tf.int32))
-
+def compile_model(model, learning_rate=0.001):
+    """Compiles the model with cross-entropy loss and a gradient descent optimizer"""
+    model.compile(
+        optimizer=tf.keras.optimizers.SGD(learning_rate=learning_rate),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=['accuracy']
+    )
 
 def placeholder_inputs(batch_size):
-    """Generate placeholder variables to represent the input tensors.
-    These placeholders are used as inputs by the rest of the model building
-    code and will be fed from the downloaded data in the .run() loop, below.
-    Args:
-    batch_size: The batch size will be baked into both placeholders.
-    Returns:
-    images_placeholder: Images placeholder.
-    labels_placeholder: Labels placeholder.
-    """
-    # Note that the shapes of the placeholders match the shapes of the full
-    # image and label tensors, except the first dimension is now batch_size
-    # rather than the full size of the train or test data sets.
-    images_placeholder = tf.placeholder(tf.float32, shape=(None,IMAGE_PIXELS), name='images_placeholder')
-    labels_placeholder = tf.placeholder(tf.int32, shape=(None), name='labels_placeholder')
+    """Generate placeholder variables to represent the input tensors."""
+    images_placeholder = tf.keras.Input(shape=(IMAGE_PIXELS,), batch_size=batch_size, name='images_placeholder')
+    labels_placeholder = tf.keras.Input(shape=(), batch_size=batch_size, dtype=tf.int32, name='labels_placeholder')
     return images_placeholder, labels_placeholder
 
+def mnist_cnn_model():
+    """Builds a convolutional neural network model using tf.keras"""
+    model = tf.keras.Sequential([
+        tf.keras.layers.Reshape(target_shape=[28, 28, 1], input_shape=(IMAGE_PIXELS,)),
+        tf.keras.layers.Conv2D(32, 5, padding='same', activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same'),
+        tf.keras.layers.Conv2D(64, 5, padding='same', activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same'),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(1024, activation='relu'),
+        tf.keras.layers.Dropout(rate=0.4),
+        tf.keras.layers.Dense(NUM_CLASSES)
+    ])
+    return model
 
-def mnist_cnn_model(batch_size):
+def loss(logits, labels):
+    """Calculates the loss from the logits and the labels."""
+    return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels))
 
-    # - placeholder for the input Data (in our case MNIST), depends on the batch size specified in C
-    data_placeholder, labels_placeholder = placeholder_inputs(batch_size)
+def training(model, loss, learning_rate):
+    """Sets up the training operations."""
+    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
+    train_op = optimizer.minimize(loss, var_list=model.trainable_variables)
+    return train_op
 
-    """Model function for CNN."""
-    # Input Layer
-    input_layer = tf.reshape(data_placeholder, [-1, 28, 28, 1])
+def evaluation(logits, labels):
+    """Evaluate the quality of the logits at predicting the label."""
+    correct = tf.equal(tf.argmax(logits, 1), labels)
+    return tf.reduce_sum(tf.cast(correct, tf.int32))
 
-    # Convolutional Layer #1
-    conv1 = tf.layers.conv2d(
-      inputs=input_layer,
-      filters=32,
-      kernel_size=[5, 5],
-      padding="same",
-      activation=tf.nn.relu)
+# The following functions are placeholders and should be updated if additional functionalities are needed
+def train_model(model, train_dataset, epochs=10):
+    """Function to train the model"""
+    model.fit(train_dataset, epochs=epochs)
 
-    # Pooling Layer #1
-    pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
-
-    # Convolutional Layer #2 and Pooling Layer #2
-    conv2 = tf.layers.conv2d(
-      inputs=pool1,
-      filters=64,
-      kernel_size=[5, 5],
-      padding="same",
-      activation=tf.nn.relu)
-    pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[2, 2], strides=2)
-
-    # Dense Layer
-    pool2_flat = tf.reshape(pool2, [-1, 7 * 7 * 64])
-    dense = tf.layers.dense(inputs=pool2_flat, units=1024, activation=tf.nn.relu)
-    dropout = tf.layers.dropout(inputs=dense, rate=0.4)
-
-    # Logits Layer
-    logits = tf.layers.dense(inputs=dropout, units=10)
-
-    # Calculate Loss (for both TRAIN and EVAL modes)
-    loss = tf.losses.sparse_softmax_cross_entropy(labels_placeholder, logits=logits)
-
-    eval_correct = evaluation(logits, labels_placeholder)
-
-    global_step = tf.Variable(0, dtype=tf.float32, trainable=False, name='global_step')
-
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
-    train_op = optimizer.minimize(
-        loss=loss,
-        global_step=global_step)
-
-    return train_op, eval_correct, loss, data_placeholder, labels_placeholder
-
-
-def mnist_fully_connected_model(batch_size, hidden1, hidden2):
-    # - placeholder for the input Data (in our case MNIST), depends on the batch size specified in C
-    data_placeholder, labels_placeholder = placeholder_inputs(batch_size)
-
-    # - logits : output of the fully connected neural network when fed with images. The NN's architecture is
-    #           specified in '
-    logits = inference_no_bias(data_placeholder, hidden1, hidden2)
-
-    # - loss : when comparing logits to the true labels.
-    Loss = loss(logits, labels_placeholder)
-
-    # - eval_correct: When run, returns the amount of labels that were predicted correctly.
-    eval_correct = evaluation(logits, labels_placeholder)
-
-
-    # - global_step :          A Variable, which tracks the amount of steps taken by the clients:
-    global_step = tf.Variable(0, dtype=tf.float32, trainable=False, name='global_step')
-
-    # - learning_rate : A tensorflow learning rate, dependent on the global_step variable.
-    learning_rate = tf.train.exponential_decay(learning_rate=0.1, global_step=global_step,
-                                                                           decay_steps=27000, decay_rate=0.1,
-                                                                           staircase=False, name='learning_rate')
-
-    # - train_op : A tf.train operation, which backpropagates the loss and updates the model according to the
-    #              learning rate specified.
-    train_op = training(Loss, learning_rate)
-
-    return train_op, eval_correct, Loss, data_placeholder, labels_placeholder
+def evaluate_model(model, test_dataset):
+    """Function to evaluate the model"""
+    return model.evaluate(test_dataset)
