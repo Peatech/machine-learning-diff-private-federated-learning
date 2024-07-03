@@ -62,6 +62,7 @@ class LossLayer(tf.keras.layers.Layer):
 
 class EvaluationLayer(tf.keras.layers.Layer):
     def call(self, logits, labels):
+        labels = tf.cast(labels, tf.int64)  # Ensure both logits and labels are the same type
         correct = tf.equal(tf.argmax(logits, axis=1), labels)
         return tf.reduce_sum(tf.cast(correct, tf.int32))
 
