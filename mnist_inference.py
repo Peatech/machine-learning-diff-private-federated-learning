@@ -33,7 +33,7 @@ import math
 
 NUM_CLASSES = 10
 IMAGE_SIZE = 28
-IMAGE_PIXELS = IMAGE_SIZE * IMAGE_PIXELS
+IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE  # Define IMAGE_PIXELS after IMAGE_SIZE
 
 def init_weights(shape, stddev=0.1):
     """ Initialize weights with a truncated normal distribution """
