@@ -21,18 +21,16 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     model = mnist.mnist_fully_connected_model(hidden1, hidden2)
 
     # Compile the model
-    model.compile(optimizer='adam', loss=mnist.loss, metrics=[mnist.evaluation])
+    model = mnist.training(model, mnist.loss)
 
-    # Define train_op, eval_correct, and loss
+    # Define eval_correct and loss
     logits = model(data_placeholder)
     loss = mnist.loss(logits, labels_placeholder)
     eval_correct = mnist.evaluation(logits, labels_placeholder)
 
-    train_op = mnist.training(loss, learning_rate=0.001)
-
     # Run differentially private federated averaging
     Accuracy_accountant, Delta_accountant = run_differentially_private_federated_averaging(
-        loss, train_op, eval_correct, DATA, data_placeholder, labels_placeholder, 
+        loss, model.train_on_batch, eval_correct, DATA, data_placeholder, labels_placeholder, 
         b=int(b), e=e, m=m, sigma=sigma, eps=eps, save_dir=save_dir, log_dir=log_dir
     )
 
