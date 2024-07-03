@@ -1,62 +1,48 @@
 import os
-import struct
 import numpy as np
 import pickle
 
-"""
-Loosely inspired by http://abel.ee.ucla.edu/cvxopt/_downloads/mnist.py
-which is GPL licensed.
-"""
-
-def read(dataset = "training", path = "."):
-
+def read(dataset="training", path="."):
     if dataset == "training":
-        fname_img = os.path.join(path, 'train-images-idx3-ubyte')
-        fname_lbl = os.path.join(path, 'train-labels-idx1-ubyte')
+        fname_img = os.path.join(path, 'train_images.npy')
+        fname_lbl = os.path.join(path, 'train_labels.npy')
     elif dataset == "testing":
-        fname_img = os.path.join(path, 't10k-images-idx3-ubyte')
-        fname_lbl = os.path.join(path, 't10k-labels-idx1-ubyte')
+        fname_img = os.path.join(path, 'test_images.npy')
+        fname_lbl = os.path.join(path, 'test_labels.npy')
     else:
         raise ValueError("dataset must be 'testing' or 'training'")
 
     print(fname_lbl)
 
-    # Load everything in some numpy arrays
-    with open(fname_lbl, 'rb') as flbl:
-        magic, num = struct.unpack(">II", flbl.read(8))
-        lbl = np.fromfile(flbl, dtype=np.int8)
-
-    with open(fname_img, 'rb') as fimg:
-        magic, num, rows, cols = struct.unpack(">IIII", fimg.read(16))
-        img = np.fromfile(fimg, dtype=np.uint8).reshape(len(lbl), rows, cols)
-
+    # Load the data from .npy files
+    img = np.load(fname_img)
+    lbl = np.load(fname_lbl)
 
     # Reshape and normalize
-
-    img = np.reshape(img, [img.shape[0], img.shape[1]*img.shape[2]])*1.0/255.0
+    img = np.reshape(img, [img.shape[0], img.shape[1] * img.shape[2]]) * 1.0 / 255.0
 
     return img, lbl
 
 
 def get_data(d):
-    # load the data
+    # Load the data
     x_train, y_train = read('training', d + '/MNIST_original')
     x_test, y_test = read('testing', d + '/MNIST_original')
 
-    # create validation set
+    # Create validation set
     x_vali = list(x_train[50000:].astype(float))
     y_vali = list(y_train[50000:].astype(float))
 
-    # create test_set
+    # Create training set
     x_train = x_train[:50000].astype(float)
     y_train = y_train[:50000].astype(float)
 
-    # sort test set (to make federated learning non i.i.d.)
+    # Sort training set (to make federated learning non-i.i.d.)
     indices_train = np.argsort(y_train)
     sorted_x_train = list(x_train[indices_train])
     sorted_y_train = list(y_train[indices_train])
 
-    # create a test set
+    # Create test set
     x_test = list(x_test.astype(float))
     y_test = list(y_test.astype(float))
 
