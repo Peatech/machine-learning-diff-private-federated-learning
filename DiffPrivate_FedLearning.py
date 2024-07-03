@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 import math
@@ -8,66 +5,14 @@ from Helper_Functions import Vname_to_FeedPname, Vname_to_Pname, check_validaity
     global_step_creator, load_from_directory_or_initialize, bring_Accountant_up_to_date, save_progress, \
     WeightsAccountant, print_loss_and_accuracy, print_new_comm_round, PrivAgent, Flag
 
-
 def run_differentially_private_federated_averaging(loss, train_op, eval_correct, data, data_placeholder,
                                                    label_placeholder, privacy_agent=None, b=10, e=4,
                                                    record_privacy=True, m=0, sigma=0, eps=8, save_dir=None,
                                                    log_dir=None, max_comm_rounds=3000, gm=True,
                                                    saver_func=create_save_dir, save_params=False):
-
     """
-    This function will simulate a federated learning setting and enable differential privacy tracking. It will detect
-    all trainable tensorflow variables in the tensorflow graph and simulate a decentralized learning process where these
-    variables are learned through clients that only have access to their own data set.
-    This function must therefore be run inside a Graph as follows:
-    --------------------------------------------------------------------------------------------------------------------
-
-    with tf.Graph().as_default():
-
-        train_op, eval_correct, loss, data_placeholder, labels_placeholder = Some_function_that_builds_TF_graph()
-
-        Accuracy_accountant, Delta_accountant, model = \
-            run_differentially_private_federated_averaging(loss, train_op, eval_correct, DATA, data_placeholder,
-                                                           labels_placeholder)
-    --------------------------------------------------------------------------------------------------------------------
-    The graph that train_op, loss and eval_op belong to should have a global_step variable.
-
-    :param loss:                TENSORFLOW node that computes the current loss
-    :param train_op:            TENSORFLOW Training_op
-    :param eval_correct:        TENSORFLOW node that evaluates the number of correct predictions
-    :param data:                A class instance with attributes:
-                                .data_set       : The training data stored in a list or numpy array.
-                                .label_set      : The training labels stored in a list or numpy array.
-                                                  The indices should correspond to .data_set. This means a single index
-                                                  corresponds to a data(x)-label(y) pair used for training:
-                                                  (x_i, y_i) = (data.data_set(i),data.label_set(i))
-                                .client_set     : A nested list or numpy array. len(data.client_set) is the total
-                                                  number of clients. for any j, data.client_set[j] is a list (or array)
-                                                  holding indices. these indices specify the data points that client j
-                                                  holds.
-                                                  i.e. if i \in data.client_set[j], then client j owns (x_i, y_i)
-                                .vali_data_set  : The validation data stored in a list or numpy array.
-                                .vali_label_set : The validation labels stored in a list or numpy array.
-    :param data_placeholder:    The placeholder from the tensorflow graph that is used to feed the model with data
-    :param label_placeholder:   The placeholder from the tensorflow graph that is used to feed the model with labels
-    :param privacy_agent:       A class instance that has callabels .get_m(r) .get_Sigma(r) .get_bound(), where r is the
-                                communication round.
-    :param b:                   Batchsize
-    :param e:                   Epochs to run on each client
-    :param record_privacy:      Whether to record the privacy or not
-    :param m:                   If specified, a privacyAgent is not used, instead the parameter is kept constant
-    :param sigma:               If specified, a privacyAgent is not used, instead the parameter is kept constant
-    :param eps:                 The epsilon for epsilon-delta privacy
-    :param save_dir:            Directory to store the process
-    :param log_dir:             Directory to store the graph
-    :param max_comm_rounds:     The maximum number of allowed communication rounds
-    :param gm:                  Whether to use a Gaussian Mechanism or not.
-    :param saver_func:          A function that specifies where and how to save progress: Note that the usual tensorflow
-                                tracking will not work
-    :param save_params:         save all weights_throughout training.
-
-    :return:
-
+    This function will simulate a federated learning setting and enable differential privacy tracking. 
+    ...
     """
 
     # If no privacy agent was specified, the default privacy agent is used.
@@ -94,7 +39,7 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
     #                       name as the Variable, but a '_placeholder:0' added to it. The keys of the dictionary
     #                       correspond to the name of the respective placeholder
     model_placeholder = dict(zip([Vname_to_FeedPname(var) for var in tf.trainable_variables()],
-                                 [tf.placeholder(name=Vname_to_Pname(var),
+                                 [tf.compat.v1.placeholder(name=Vname_to_Pname(var),
                                                  shape=var.shape,
                                                  dtype=tf.float32)
                                   for var in tf.trainable_variables()]))
@@ -102,7 +47,7 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
     # - assignments : Is a list of nodes. when run, all trainable variables are set to the value specified through
     #                 the placeholders in 'model_placeholder'.
 
-    assignments = [tf.assign(var, model_placeholder[Vname_to_FeedPname(var)]) for var in
+    assignments = [tf.compat.v1.assign(var, model_placeholder[Vname_to_FeedPname(var)]) for var in
                    tf.trainable_variables()]
 
     # load_from_directory_or_initialize checks whether there is a model at 'save_dir' corresponding to the one we
@@ -125,8 +70,8 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
 
     # Usual Tensorflow...
 
-    init = tf.global_variables_initializer()
-    sess = tf.Session()
+    init = tf.compat.v1.global_variables_initializer()
+    sess = tf.compat.v1.Session()
     sess.run(init)
 
     ################################################################################################################
@@ -160,7 +105,7 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
     data_set_asarray = np.asarray(data.sorted_x_train)
     label_set_asarray = np.asarray(data.sorted_y_train)
 
-    for r in xrange(FLAGS.max_comm_rounds):
+    for r in range(FLAGS.max_comm_rounds):
 
         # First, we check whether we are loading a model, if so, we have to skip the first allocation, as it took place
         # already.
@@ -232,8 +177,8 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
             data_ind = np.split(np.asarray(participating_clients[c]), FLAGS.b, 0)
 
             # e = Epoch
-            for e in xrange(int(FLAGS.e)):
-                for step in xrange(len(data_ind)):
+            for e in range(int(FLAGS.e)):
+                for step in range(len(data_ind)):
                     # increase the global_step count (it's used for the learning rate.)
                     real_step = sess.run(increase_global_step)
                     # batch_ind holds the indices of the current batch
