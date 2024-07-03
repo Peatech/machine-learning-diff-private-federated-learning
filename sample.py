@@ -15,9 +15,11 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     DATA = Data(save_dir, N)
 
     # Initialize a TensorFlow model using tf.keras here:
-    # Updated to use the correct function from mnist_inference
     data_placeholder, labels_placeholder = mnist.placeholder_inputs(batch_size=int(b))
     logits = mnist.mnist_fully_connected_model(data_placeholder, hidden1, hidden2)
+
+    # Create the global_step variable
+    global_step = tf.compat.v1.Variable(0, name='global_step', trainable=False)
 
     # Wrap loss computation in a custom layer
     class LossLayer(tf.keras.layers.Layer):
@@ -37,8 +39,9 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     eval_layer = EvaluationLayer()
     eval_correct = eval_layer(logits, labels_placeholder)
 
-    # Create the global_step variable
-    global_step = tf.compat.v1.Variable(0, name='global_step', trainable=False)
+    # Set up the training operation
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+    train_op = optimizer.minimize(loss, global_step=global_step)
 
     # Assuming you have a function to run the differentially private federated averaging:
     Accuracy_accountant, Delta_accountant = run_differentially_private_federated_averaging(
@@ -56,7 +59,7 @@ if __name__ == '__main__':
     parser.add_argument('--sigma', type=float, default=0, help='The gm variance parameter; will not affect if Priv_agent is set to True')
     parser.add_argument('--eps', type=float, default=8, help='Epsilon')
     parser.add_argument('--m', type=int, default=0, help='Number of clients participating in a round')
-    parser.add_argument('--b', type=int, default=10, help='Batches per client')
+    parser.add_argument('--b', type=int, default 10, help='Batches per client')
     parser.add_argument('--e', type=int, default=4, help='Epochs per client')
     parser.add_argument('--log_dir', type=str, default=os.path.join(os.getenv('TEST_TMPDIR', '/tmp'), 'tensorflow/mnist/logs/fully_connected_feed'), help='Directory to put the log data.')
     FLAGS = parser.parse_args()
