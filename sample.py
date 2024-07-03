@@ -6,16 +6,6 @@ from MNIST_reader import Data
 import argparse
 import sys
 
-class LossLayer(tf.keras.layers.Layer):
-    def call(self, logits, labels):
-        labels = tf.cast(labels, tf.int64)
-        return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels))
-
-class EvaluationLayer(tf.keras.layers.Layer):
-    def call(self, logits, labels):
-        correct = tf.equal(tf.argmax(logits, axis=1), tf.cast(labels, tf.int64))
-        return tf.reduce_sum(tf.cast(correct, tf.int32))
-
 def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     # Specs for the model that we would like to train in differentially private federated fashion:
     hidden1 = 600
@@ -29,12 +19,12 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     logits = mnist.mnist_fully_connected_model(data_placeholder, hidden1, hidden2)
 
     # Create the global_step variable
-    global_step = tf.compat.v1.Variable(0, name='global_step', trainable=False)
+    global_step = tf.Variable(0, name='global_step', trainable=False)
 
-    loss_layer = LossLayer()
+    loss_layer = mnist.LossLayer()
     loss = loss_layer(logits, labels_placeholder)
 
-    eval_layer = EvaluationLayer()
+    eval_layer = mnist.EvaluationLayer()
     eval_correct = eval_layer(logits, labels_placeholder)
 
     # Set up the training operation using GradientTape
@@ -52,7 +42,7 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     # Assuming you have a function to run the differentially private federated averaging:
     Accuracy_accountant, Delta_accountant = run_differentially_private_federated_averaging(
         loss, train_step, eval_correct, DATA, data_placeholder, labels_placeholder, b=int(b), e=e, m=m, sigma=sigma, eps=eps,
-        save_dir=save_dir, log_dir=log_dir
+        save_dir=save_dir, log_dir=log_dir, global_step=global_step
     )
 
 def main(_):
