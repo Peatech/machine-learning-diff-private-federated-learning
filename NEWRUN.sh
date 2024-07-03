@@ -14,12 +14,12 @@ mkdir -p MNIST_original
 # Create a Python script to download the MNIST dataset using TensorFlow/Keras
 cat <<EOF > download_mnist.py
 import tensorflow as tf
+import numpy as np
 
 # Download the MNIST dataset
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
 # Save the dataset to the MNIST_original directory
-import numpy as np
 np.save('MNIST_original/train_images.npy', x_train)
 np.save('MNIST_original/train_labels.npy', y_train)
 np.save('MNIST_original/test_images.npy', x_test)
@@ -35,7 +35,8 @@ if [ ! -f "MNIST_original/train_images.npy" ] || [ ! -f "MNIST_original/train_la
   exit 1
 fi
 
-python Create_clients.py 
+# Run the Create_clients.py script
+python Create_clients.py
 
 STRING2="You can now run differentially private federated learning on the MNIST data set. Type python sample.py —-h for help"
 echo $STRING2
