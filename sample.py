@@ -14,8 +14,8 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     # DATA is expected to be an object with client structures and training examples
     DATA = Data(save_dir, N)
 
-    # Initialize placeholders
-    data_placeholder, labels_placeholder = mnist.placeholder_inputs(batch_size=b)
+    # Initialize placeholders, ensure batch size is an integer
+    data_placeholder, labels_placeholder = mnist.placeholder_inputs(batch_size=int(b))
 
     # Initialize a TensorFlow model using tf.keras here:
     model = mnist.mnist_fully_connected_model(hidden1, hidden2)
@@ -33,7 +33,7 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     # Run differentially private federated averaging
     Accuracy_accountant, Delta_accountant = run_differentially_private_federated_averaging(
         loss, train_op, eval_correct, DATA, data_placeholder, labels_placeholder, 
-        b=b, e=e, m=m, sigma=sigma, eps=eps, save_dir=save_dir, log_dir=log_dir
+        b=int(b), e=e, m=m, sigma=sigma, eps=eps, save_dir=save_dir, log_dir=log_dir
     )
 
 def main(_):
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('--N', type=int, default=100, help='Total Number of clients participating')
     parser.add_argument('--sigma', type=float, default=0, help='The gm variance parameter; will not affect if Priv_agent is set to True')
     parser.add_argument('--eps', type=float, default=8, help='Epsilon')
-    parser.add_argument('--m', type=int, default=0, help='Number of clients participating in a round')
+    parser.add_argument('--m', type=int, default 0, help='Number of clients participating in a round')
     parser.add_argument('--b', type=float, default=10, help='Batches per client')
     parser.add_argument('--e', type=int, default=4, help='Epochs per client')
     parser.add_argument('--log_dir', type=str, default=os.path.join(os.getenv('TEST_TMPDIR', '/tmp'), 'tensorflow/mnist/logs/fully_connected_feed'), help='Directory to put the log data.')
