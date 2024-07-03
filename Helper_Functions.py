@@ -151,7 +151,7 @@ def create_save_dir(FLAGS):
         model = gm_str + 'N_' + str(FLAGS.n) + '/Epochs_' + str(int(FLAGS.e)) + '_Batches_' + str(int(FLAGS.b))
         return raw_directory + str(model) + '/' + FLAGS.PrivAgentName
     else:
-        model = gm_str + 'N_' + str(FLAGS.n) + '/Sigma_' + str(FLAGS.Sigma) + '_C_' + str(FLAGS.m) + '/Epochs_' + str(
+        model = gm_str + 'N_' + str(FLAGS.n) + '/sigma_' + str(FLAGS.Sigma) + '_C_' + str(FLAGS.m) + '/Epochs_' + str(
             int(FLAGS.e)) + '_Batches_' + str(int(FLAGS.b))
         return raw_directory + str(model)
 
