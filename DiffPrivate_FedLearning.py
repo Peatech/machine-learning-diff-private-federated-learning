@@ -1,6 +1,3 @@
-import numpy as np
-import tensorflow as tf
-import math
 from Helper_Functions import Vname_to_FeedPname, Vname_to_Pname, check_validaity_of_FLAGS, create_save_dir, \
     global_step_creator, load_from_directory_or_initialize, bring_Accountant_up_to_date, save_progress, \
     WeightsAccountant, print_loss_and_accuracy, print_new_comm_round, PrivAgent, Flag
@@ -11,8 +8,7 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
                                                    log_dir=None, max_comm_rounds=3000, gm=True,
                                                    saver_func=create_save_dir, save_params=False):
     """
-    This function will simulate a federated learning setting and enable differential privacy tracking. 
-    ...
+    This function will simulate a federated learning setting and enable differential privacy tracking.
     """
 
     # If no privacy agent was specified, the default privacy agent is used.
@@ -33,22 +29,16 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
     # increase and reset it to a certain value.
     increase_global_step, set_global_step = global_step_creator()
 
-    # - model_placeholder : a dictionary in which there is a placeholder stored for every trainable variable defined
-    #                       in the tensorflow graph. Each placeholder corresponds to one trainable variable and has
-    #                       the same shape and dtype as that variable. in addition, the placeholder has the same
-    #                       name as the Variable, but a '_placeholder:0' added to it. The keys of the dictionary
-    #                       correspond to the name of the respective placeholder
-    model_placeholder = dict(zip([Vname_to_FeedPname(var) for var in tf.trainable_variables()],
-                                 [tf.compat.v1.placeholder(name=Vname_to_Pname(var),
-                                                 shape=var.shape,
-                                                 dtype=tf.float32)
-                                  for var in tf.trainable_variables()]))
+    # model_placeholder : a dictionary in which there is a placeholder stored for every trainable variable defined
+    # in the tensorflow graph.
+    model_placeholder = dict(zip([Vname_to_FeedPname(var) for var in tf.compat.v1.trainable_variables()],
+                                 [tf.keras.Input(shape=var.shape, dtype=tf.float32, name=Vname_to_Pname(var))
+                                  for var in tf.compat.v1.trainable_variables()]))
 
-    # - assignments : Is a list of nodes. when run, all trainable variables are set to the value specified through
-    #                 the placeholders in 'model_placeholder'.
-
+    # assignments : Is a list of nodes. when run, all trainable variables are set to the value specified through
+    # the placeholders in 'model_placeholder'.
     assignments = [tf.compat.v1.assign(var, model_placeholder[Vname_to_FeedPname(var)]) for var in
-                   tf.trainable_variables()]
+                   tf.compat.v1.trainable_variables()]
 
     # load_from_directory_or_initialize checks whether there is a model at 'save_dir' corresponding to the one we
     # are building. If so, training is resumed, if not, it returns:  - model = []
@@ -56,7 +46,6 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
     #                                                                - delta_accountant = []
     #                                                                - real_round = 0
     # And initializes a Differential_Privacy_Accountant as acc
-
     model, accuracy_accountant, delta_accountant, acc, real_round, FLAGS, computed_deltas = \
         load_from_directory_or_initialize(save_dir, FLAGS)
 
@@ -76,25 +65,15 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
 
     ################################################################################################################
 
-    # If there was no loadable model, we initialize a model:
-    # - model : dictionary having as keys the names of the placeholders associated to each variable. It will serve
-    #           as a feed_dict to assign values to the placeholders which are used to set the variables to
-    #           specific values.
-
+    # If there was no loadable model, we initialize a new model:
     if not model:
-        model = dict(zip([Vname_to_FeedPname(var) for var in tf.trainable_variables()],
-                         [sess.run(var) for var in tf.trainable_variables()]))
+        model = dict(zip([Vname_to_FeedPname(var) for var in tf.compat.v1.trainable_variables()],
+                         [sess.run(var) for var in tf.compat.v1.trainable_variables()]))
         model['global_step_placeholder:0'] = 0
-
         real_round = 0
-
         weights_accountant = []
 
-    # If a model is loaded, and we are not relearning it (relearning means that we once already finished such a model
-    # and we are learning it again to average the outcomes), we have to get the privacy accountant up to date. This
-    # means, that we have to iterate the privacy accountant over all the m, sigmas that correspond to already completed
-    # communication
-
+    # If a model is loaded, and we are not relearning it, we have to get the privacy accountant up to date.
     if not FLAGS.relearn and real_round > 0:
         bring_Accountant_up_to_date(acc, sess, real_round, privacy_agent, FLAGS)
 
@@ -106,25 +85,20 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
     label_set_asarray = np.asarray(data.sorted_y_train)
 
     for r in range(FLAGS.max_comm_rounds):
+        # Setting the trainable Variables in the graph to the values stored in feed_dict 'model'
+        sess.run(assignments, feed_dict=model)
 
-        # First, we check whether we are loading a model, if so, we have to skip the first allocation, as it took place
-        # already.
-        if not (FLAGS.loaded and r == 0):
-            # Setting the trainable Variables in the graph to the values stored in feed_dict 'model'
-            sess.run(assignments, feed_dict=model)
+        # create a feed-dict holding the validation set.
+        feed_dict = {str(data_placeholder.name): np.asarray(data.x_vali),
+                     str(label_placeholder.name): np.asarray(data.y_vali)}
 
-            # create a feed-dict holding the validation set.
+        # compute the loss on the validation set.
+        global_loss = sess.run(loss, feed_dict=feed_dict)
+        count = sess.run(eval_correct, feed_dict=feed_dict)
+        accuracy = float(count) / float(len(data.y_vali))
+        accuracy_accountant.append(accuracy)
 
-            feed_dict = {str(data_placeholder.name): np.asarray(data.x_vali),
-                         str(label_placeholder.name): np.asarray(data.y_vali)}
-
-            # compute the loss on the validation set.
-            global_loss = sess.run(loss, feed_dict=feed_dict)
-            count = sess.run(eval_correct, feed_dict=feed_dict)
-            accuracy = float(count) / float(len(data.y_vali))
-            accuracy_accountant.append(accuracy)
-
-            print_loss_and_accuracy(global_loss, accuracy)
+        print_loss_and_accuracy(global_loss, accuracy)
 
         if delta_accountant[-1] > privacy_agent.get_bound() or math.isnan(delta_accountant[-1]):
             print('************** The last step exhausted the privacy budget **************')
@@ -155,22 +129,16 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
         print('Clients participating: ' + str(m))
 
         # Randomly choose a total of m (out of n) client-indices that participate in this round
-        # randomly permute a range-list of length n: [1,2,3...n] --> [5,2,7..3]
         perm = np.random.permutation(FLAGS.n)
 
         # Use the first m entries of the permuted list to decide which clients (and their sets) will participate in
-        # this round. participating_clients is therefore a nested list of length m. participating_clients[i] should be
-        # a list of integers that specify which data points are held by client i. Note that this nested list is a
-        # mapping only. the actual data is stored in data.data_set.
+        # this round. participating_clients is therefore a nested list of length m.
         s = perm[0:m].tolist()
         participating_clients = [data.client_set[k] for k in s]
 
         # For each client c (out of the m chosen ones):
         for c in range(m):
-
-            # Assign the global model and set the global step. This is obsolete when the first client trains,
-            # but as soon as the next client trains, all progress allocated before, has to be discarded and the
-            # trainable variables reset to the values specified in 'model'
+            # Assign the global model and set the global step.
             sess.run(assignments + [set_global_step], feed_dict=model)
 
             # allocate a list, holding data indices associated to client c and split into batches.
@@ -193,10 +161,7 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
                     _ = sess.run([train_op], feed_dict=feed_dict)
 
             if c == 0:
-
-                # If we just trained the first client in a comm_round, We override the old weights_accountant (or,
-                # if this was the first comm_round, we allocate a new one. The Weights_accountant keeps track of
-                # all client updates throughout a communication round.
+                # If we just trained the first client in a comm_round, We override the old weights_accountant
                 weights_accountant = WeightsAccountant(sess, model, sigma, real_round)
             else:
                 # Allocate the client update, if this is not the first client in a communication round
@@ -207,12 +172,7 @@ def run_differentially_private_federated_averaging(loss, train_op, eval_correct,
 
         print('......Communication round %s completed' % str(real_round))
         # Compute a new model according to the updates and the Gaussian mechanism specifications from FLAGS
-        # Also, if computed_deltas is an empty list, compute delta; the probability of Epsilon-Differential Privacy
-        # being broken by allocating the model. If computed_deltas is passed, instead of computing delta, the
-        # pre-computed vaue is used.
         model, delta = weights_accountant.Update_via_GaussianMechanism(sess, acc, FLAGS, computed_deltas)
-
-        # append delta to a list.
         delta_accountant.append(delta)
 
         # Set the global_step to the current step of the last client, such that the next clients can feed it into
