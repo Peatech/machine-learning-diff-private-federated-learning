@@ -33,7 +33,7 @@ import math
 
 NUM_CLASSES = 10
 IMAGE_SIZE = 28
-IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE
+IMAGE_PIXELS = IMAGE_SIZE * IMAGE_PIXELS
 
 def init_weights(shape, stddev=0.1):
     """ Initialize weights with a truncated normal distribution """
@@ -74,4 +74,8 @@ def evaluation(logits, labels):
     """Evaluate the quality of the logits at predicting the label."""
     return EvaluationLayer()(logits, labels)
 
-
+def training(model, loss):
+    """Compile the model with the optimizer and loss function"""
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+    model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+    return model
