@@ -6,6 +6,16 @@ from MNIST_reader import Data
 import argparse
 import sys
 
+class LossLayer(tf.keras.layers.Layer):
+    def call(self, logits, labels):
+        labels = tf.cast(labels, tf.int64)
+        return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels))
+
+class EvaluationLayer(tf.keras.layers.Layer):
+    def call(self, logits, labels):
+        correct = tf.equal(tf.argmax(logits, axis=1), tf.cast(labels, tf.int64))
+        return tf.reduce_sum(tf.cast(correct, tf.int32))
+
 def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     # Specs for the model that we would like to train in differentially private federated fashion:
     hidden1 = 600
@@ -21,31 +31,27 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     # Create the global_step variable
     global_step = tf.compat.v1.Variable(0, name='global_step', trainable=False)
 
-    # Wrap loss computation in a custom layer
-    class LossLayer(tf.keras.layers.Layer):
-        def call(self, logits, labels):
-            labels = tf.cast(labels, tf.int64)
-            return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels))
-
     loss_layer = LossLayer()
     loss = loss_layer(logits, labels_placeholder)
-
-    # Wrap evaluation in a custom layer
-    class EvaluationLayer(tf.keras.layers.Layer):
-        def call(self, logits, labels):
-            correct = tf.equal(tf.argmax(logits, axis=1), tf.cast(labels, tf.int64))
-            return tf.reduce_sum(tf.cast(correct, tf.int32))
 
     eval_layer = EvaluationLayer()
     eval_correct = eval_layer(logits, labels_placeholder)
 
-    # Set up the training operation
+    # Set up the training operation using GradientTape
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-    train_op = optimizer.minimize(loss, global_step=global_step)
+
+    @tf.function
+    def train_step(images, labels):
+        with tf.GradientTape() as tape:
+            logits = mnist.mnist_fully_connected_model(images, hidden1, hidden2)
+            loss_value = loss_layer(logits, labels)
+        gradients = tape.gradient(loss_value, model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+        return loss_value
 
     # Assuming you have a function to run the differentially private federated averaging:
     Accuracy_accountant, Delta_accountant = run_differentially_private_federated_averaging(
-        loss, train_op, eval_correct, DATA, data_placeholder, labels_placeholder, b=int(b), e=e, m=m, sigma=sigma, eps=eps,
+        loss, train_step, eval_correct, DATA, data_placeholder, labels_placeholder, b=int(b), e=e, m=m, sigma=sigma, eps=eps,
         save_dir=save_dir, log_dir=log_dir
     )
 
