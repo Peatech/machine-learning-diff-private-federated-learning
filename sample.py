@@ -21,7 +21,7 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     model = mnist.mnist_fully_connected_model(hidden1, hidden2)
 
     # Compile the model
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss=mnist.loss, metrics=[mnist.evaluation])
 
     # Define train_op, eval_correct, and loss
     logits = model(data_placeholder)
