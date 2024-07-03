@@ -40,7 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('--sigma', type=float, default=0, help='The gm variance parameter; will not affect if Priv_agent is set to True')
     parser.add_argument('--eps', type=float, default=8, help='Epsilon')
     parser.add_argument('--m', type=int, default=0, help='Number of clients participating in a round')
-    parser.add_argument('--b', type=int, default 10, help='Batches per client')
+    parser.add_argument('--b', type=int, default=10, help='Batches per client')
     parser.add_argument('--e', type=int, default=4, help='Epochs per client')
     parser.add_argument('--log_dir', type=str, default=os.path.join(os.getenv('TEST_TMPDIR', '/tmp'), 'tensorflow/mnist/logs/fully_connected_feed'), help='Directory to put the log data.')
     FLAGS = parser.parse_args()
