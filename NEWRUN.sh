@@ -37,7 +37,7 @@ if [ ! -f "MNIST_original/train_images.npy" ] || [ ! -f "MNIST_original/train_la
 fi
 
 # Run the Create_clients.py script
-cd ..
+cd /kaggle/working/machine-learning-diff-private-federated-learning
 python Create_clients.py
 
 STRING2="You can now run differentially private federated learning on the MNIST data set. Type python sample.py —-h for help"
