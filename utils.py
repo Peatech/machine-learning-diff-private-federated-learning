@@ -146,7 +146,7 @@ def BuildNetwork(inputs, network_parameters):
   outputs = tf.reshape(outputs, [-1, num_inputs])
 
   # Now project, if needed
-  if network_parameters.projection_type is not "NONE":
+  if network_parameters.projection_type != "NONE":
     projection = tf.Variable(tf.truncated_normal(
         [num_inputs, network_parameters.projection_dimensions],
         stddev=1.0 / math.sqrt(num_inputs)), trainable=False, name="projection")
