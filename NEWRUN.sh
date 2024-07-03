@@ -10,33 +10,31 @@ fi
 
 cd DiffPrivate_FedLearning
 mkdir -p MNIST_original
-cd MNIST_original 
 
-# Download MNIST data using wget
-wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
-wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
-wget http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz
-wget http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
+# Create a Python script to download the MNIST dataset using TensorFlow/Keras
+cat <<EOF > download_mnist.py
+import tensorflow as tf
+
+# Download the MNIST dataset
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+
+# Save the dataset to the MNIST_original directory
+import numpy as np
+np.save('MNIST_original/train_images.npy', x_train)
+np.save('MNIST_original/train_labels.npy', y_train)
+np.save('MNIST_original/test_images.npy', x_test)
+np.save('MNIST_original/test_labels.npy', y_test)
+EOF
+
+# Run the Python script to download and save the dataset
+python download_mnist.py
 
 # Check if files were downloaded
-if [ ! -f "train-images-idx3-ubyte.gz" ] || [ ! -f "train-labels-idx1-ubyte.gz" ] || [ ! -f "t10k-images-idx3-ubyte.gz" ] || [ ! -f "t10k-labels-idx1-ubyte.gz" ]; then
+if [ ! -f "MNIST_original/train_images.npy" ] || [ ! -f "MNIST_original/train_labels.npy" ] || [ ! -f "MNIST_original/test_images.npy" ] || [ ! -f "MNIST_original/test_labels.npy" ]; then
   echo "One or more MNIST files failed to download."
   exit 1
 fi
 
-# Extract the files
-gunzip -f train-images-idx3-ubyte.gz
-gunzip -f train-labels-idx1-ubyte.gz
-gunzip -f t10k-images-idx3-ubyte.gz
-gunzip -f t10k-labels-idx1-ubyte.gz
-
-# Check if files were extracted
-if [ ! -f "train-images-idx3-ubyte" ] || [ ! -f "train-labels-idx1-ubyte" ] || [ ! -f "t10k-images-idx3-ubyte" ] || [ ! -f "t10k-labels-idx1-ubyte" ]; then
-  echo "One or more MNIST files failed to extract."
-  exit 1
-fi
-
-cd ..
 python Create_clients.py 
 
 STRING2="You can now run differentially private federated learning on the MNIST data set. Type python sample.py —-h for help"
