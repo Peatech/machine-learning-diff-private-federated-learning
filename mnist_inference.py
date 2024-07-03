@@ -24,6 +24,7 @@ def mnist_fully_connected_model(images, hidden1_units, hidden2_units):
     return logits
 
 def loss(logits, labels):
+    labels = tf.cast(labels, tf.int64)
     return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels))
 
 class EvaluationLayer(tf.keras.layers.Layer):
@@ -37,6 +38,5 @@ def evaluation(logits, labels):
 
 def training(loss, learning_rate):
     optimizer = tf.keras.optimizers.SGD(learning_rate)
-    global_step = tf.Variable(0, name='global_step', trainable=False)
-    train_op = optimizer.minimize(loss, global_step=global_step)
+    train_op = optimizer.minimize(loss)
     return train_op
