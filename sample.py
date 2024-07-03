@@ -7,7 +7,6 @@ import argparse
 import sys
 
 def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
-
     # Specs for the model that we would like to train in differentially private federated fashion:
     hidden1 = 600
     hidden2 = 100
@@ -16,12 +15,15 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     DATA = Data(save_dir, N)
 
     # Initialize a TensorFlow model using tf.keras here:
-    model = mnist.create_fully_connected_model(hidden1, hidden2)
+    # Updated to use the correct function from mnist_inference
+    model = mnist.mnist_fully_connected_model(hidden1, hidden2)
 
-    # Compile the model with loss, optimizer, and evaluation metrics
+    # Assuming mnist_fully_connected_model returns a compiled model, you can directly use it:
+    # If mnist_fully_connected_model does not return a compiled model, you need to compile it here:
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    # You can use a custom training loop or a built-in fit method. Here is an example using fit:
+    # You can use a custom training loop or a built-in fit method.
+    # Here is an example using fit:
     # For this, you need your DATA to be in a form consumable by model.fit(), such as tf.data.Dataset objects
     # model.fit(train_dataset, epochs=e, steps_per_epoch=b)
 
