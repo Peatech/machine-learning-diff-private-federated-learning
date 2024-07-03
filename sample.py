@@ -18,9 +18,24 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     # Updated to use the correct function from mnist_inference
     data_placeholder, labels_placeholder = mnist.placeholder_inputs(batch_size=int(b))
     logits = mnist.mnist_fully_connected_model(data_placeholder, hidden1, hidden2)
-    loss = mnist.loss(logits, labels_placeholder)
-    eval_correct = mnist.evaluation(logits, labels_placeholder)
-    train_op = mnist.training(loss, learning_rate=0.001)
+
+    # Wrap loss computation in a custom layer
+    class LossLayer(tf.keras.layers.Layer):
+        def call(self, logits, labels):
+            labels = tf.cast(labels, tf.int64)
+            return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels))
+
+    loss_layer = LossLayer()
+    loss = loss_layer(logits, labels_placeholder)
+
+    # Wrap evaluation in a custom layer
+    class EvaluationLayer(tf.keras.layers.Layer):
+        def call(self, logits, labels):
+            correct = tf.equal(tf.argmax(logits, axis=1), tf.cast(labels, tf.int64))
+            return tf.reduce_sum(tf.cast(correct, tf.int32))
+
+    eval_layer = EvaluationLayer()
+    eval_correct = eval_layer(logits, labels_placeholder)
 
     # Create the global_step variable
     global_step = tf.compat.v1.Variable(0, name='global_step', trainable=False)
