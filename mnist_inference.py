@@ -33,7 +33,7 @@ import math
 
 NUM_CLASSES = 10
 IMAGE_SIZE = 28
-IMAGE_PIXELS = IMAGE_SIZE * IMAGE_PIXELS
+IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE
 
 def init_weights(shape, stddev=0.1):
     """ Initialize weights with a truncated normal distribution """
@@ -79,3 +79,4 @@ def training(model, loss):
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
     return model
+
