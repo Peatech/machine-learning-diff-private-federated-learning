@@ -14,23 +14,26 @@ def sample(N, b, e, m, sigma, eps, save_dir, log_dir):
     # DATA is expected to be an object with client structures and training examples
     DATA = Data(save_dir, N)
 
+    # Initialize placeholders
+    data_placeholder, labels_placeholder = mnist.placeholder_inputs(batch_size=b)
+
     # Initialize a TensorFlow model using tf.keras here:
-    # Updated to use the correct function from mnist_inference
     model = mnist.mnist_fully_connected_model(hidden1, hidden2)
 
-    # Assuming mnist_fully_connected_model returns a compiled model, you can directly use it:
-    # If mnist_fully_connected_model does not return a compiled model, you need to compile it here:
+    # Compile the model
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    # You can use a custom training loop or a built-in fit method.
-    # Here is an example using fit:
-    # For this, you need your DATA to be in a form consumable by model.fit(), such as tf.data.Dataset objects
-    # model.fit(train_dataset, epochs=e, steps_per_epoch=b)
+    # Define train_op, eval_correct, and loss
+    logits = model(data_placeholder)
+    loss = mnist.loss(logits, labels_placeholder)
+    eval_correct = mnist.evaluation(logits, labels_placeholder)
 
-    # Assuming you have a function to run the differentially private federated averaging:
+    train_op = mnist.training(loss, learning_rate=0.001)
+
+    # Run differentially private federated averaging
     Accuracy_accountant, Delta_accountant = run_differentially_private_federated_averaging(
-        model, DATA, b=b, e=e, m=m, sigma=sigma, eps=eps,
-        save_dir=save_dir, log_dir=log_dir
+        loss, train_op, eval_correct, DATA, data_placeholder, labels_placeholder, 
+        b=b, e=e, m=m, sigma=sigma, eps=eps, save_dir=save_dir, log_dir=log_dir
     )
 
 def main(_):
