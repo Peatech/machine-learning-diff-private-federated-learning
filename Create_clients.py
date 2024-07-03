@@ -22,7 +22,7 @@ def create_clients(num, dir):
     buckets = []
     for k in range(num_classes):
         temp = []
-        for j in range(num / 100):
+        for j in range(int(num / 100)):
             temp = np.hstack((temp, k * num_examples/10 + np.random.permutation(int(num_examples/10))))
         buckets = np.hstack((buckets, temp))
     shards = 2 * num
