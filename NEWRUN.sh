@@ -8,8 +8,9 @@ if [ ! -d "DiffPrivate_FedLearning" ]; then
   exit 1
 fi
 
-cd DiffPrivate_FedLearning
+cd /kaggle/working/machine-learning-diff-private-federated-learning
 mkdir -p MNIST_original
+
 
 # Create a Python script to download the MNIST dataset using TensorFlow/Keras
 cat <<EOF > download_mnist.py
