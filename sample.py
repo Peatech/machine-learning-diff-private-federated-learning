@@ -6,7 +6,7 @@ from MNIST_reader import Data
 import argparse
 import sys
 
-
+tf.compat.v1.disable_eager_execution()
 def sample(N, b,e,m, sigma, eps, save_dir, log_dir):
 
     # Specs for the model that we would like to train in differentially private federated fashion:
@@ -87,5 +87,5 @@ if __name__ == '__main__':
         help='Directory to put the log data.'
     )
     FLAGS, unparsed = parser.parse_known_args()
-    tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+    tf.compat.v1.app.run(main=main, argv=[sys.argv[0]] + unparsed)
 
