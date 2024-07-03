@@ -5,7 +5,7 @@ import os
 def create_clients(num, dir):
 
     '''
-    This function creates clients that hold non-iid MNIST data accroding to the experiments in https://research.google.com/pubs/pub44822.html. (it actually just creates indices that point to data.
+    This function creates clients that hold non-iid MNIST data according to the experiments in https://research.google.com/pubs/pub44822.html. (it actually just creates indices that point to data.
     but the way these indices are grouped, they create a non-iid client.)
     :param num: Number of clients
     :param dir: where to store
@@ -14,17 +14,25 @@ def create_clients(num, dir):
 
     num_examples = 50000
     num_classes = 10
+
     if os.path.exists(dir + '/'+str(num)+'_clients.pkl'):
         print('Client exists at: '+dir + '/'+str(num)+'_clients.pkl')
         return
+
     if not os.path.exists(dir):
         os.makedirs(dir)
+
+    # Load the data from .npy files
+    x_train = np.load(os.path.join(dir, 'x_train.npy'))
+    y_train = np.load(os.path.join(dir, 'y_train.npy'))
+
     buckets = []
     for k in range(num_classes):
         temp = []
-        for j in range(int(num / 100)):
-            temp = np.hstack((temp, k * num_examples/10 + np.random.permutation(int(num_examples/10))))
+        for j in range(int(num // 100)):  # Ensure integer division
+            temp = np.hstack((temp, k * num_examples // 10 + np.random.permutation(int(num_examples // 10))))
         buckets = np.hstack((buckets, temp))
+
     shards = 2 * num
     perm = np.random.permutation(shards)
     # z will be of length 250 and each element represents a client.
@@ -37,12 +45,13 @@ def create_clients(num, dir):
         # shuffle the data in each element of z, so that each client doesn't have all digits stuck together.
         perm_2 = np.random.permutation(int(2 * len(buckets) / shards))
         z[-1] = z[-1][perm_2]
+
     filehandler = open(dir + '/'+str(num)+'_clients.pkl', "wb")
     pickle.dump(z, filehandler)
     filehandler.close()
     print('client created at: '+dir + '/'+str(num)+'_clients.pkl')
 
 if __name__ == '__main__':
-    List_of_clients = [100,200,500,1000,2000,5000,10000]
+    List_of_clients = [100, 200, 500, 1000, 2000, 5000, 10000]
     for j in List_of_clients:
         create_clients(j, os.getcwd()+'/DATA/clients')
